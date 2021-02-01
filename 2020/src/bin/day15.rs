@@ -1,9 +1,9 @@
 #![feature(test)]
 extern crate test;
 
-use fnv::FnvHashMap;
+use rustc_hash::FxHashMap;
 
-type Map = FnvHashMap<usize, usize>;
+type Map = FxHashMap<usize, usize>;
 
 type Input = Vec<usize>;
 type PartInput = [usize];

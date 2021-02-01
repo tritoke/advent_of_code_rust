@@ -1,16 +1,14 @@
-#![feature(box_syntax)]
-#![feature(box_patterns)]
-#![feature(test)]
+#![feature(box_syntax, box_patterns, test)]
 extern crate test;
 
-use fnv::FnvHashMap;
+use rustc_hash::FxHashMap;
 
 use std::str::Chars;
 
 use std::num::ParseIntError;
 use std::str::FromStr;
 
-type Rules = FnvHashMap<usize, Rule>;
+type Rules = FxHashMap<usize, Rule>;
 type Cases = Vec<&'static str>;
 type Input = (Rules, Cases);
 

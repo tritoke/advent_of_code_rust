@@ -5,7 +5,7 @@ use either::{Either, Left, Right};
 use std::num::ParseIntError;
 use std::str::FromStr;
 
-use fnv::FnvHashMap;
+use ahash::AHashMap;
 
 type Input = Vec<Either<Mask, MemAction>>;
 type PartInput = [Either<Mask, MemAction>];
@@ -41,7 +41,7 @@ fn get_input() -> Input {
 fn part1(input: &PartInput) -> usize {
     let mut mask: Mask = Default::default();
 
-    let mut mem = FnvHashMap::default();
+    let mut mem = AHashMap::default();
 
     for item in input {
         match item {
@@ -58,7 +58,7 @@ fn part1(input: &PartInput) -> usize {
 fn part2(input: &PartInput) -> usize {
     let mut mask: Mask = Default::default();
 
-    let mut mem = FnvHashMap::default();
+    let mut mem = AHashMap::default();
 
     for item in input {
         match item {

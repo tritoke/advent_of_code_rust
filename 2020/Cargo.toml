@@ -9,4 +9,6 @@ edition = "2018"
 [dependencies]
 either = "~1.6.1"
 fnv = "1.0.7"
+rustc-hash = "1.1.0"
+ahash = "0.7.0"
 grid = "0.2.3"

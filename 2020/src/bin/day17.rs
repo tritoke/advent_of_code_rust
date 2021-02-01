@@ -2,12 +2,12 @@
 extern crate test;
 
 use either::{Either, Left, Right};
-use fnv::FnvHashSet;
+use rustc_hash::FxHashSet;
 
 type Coord3d = (i32, i32, i32);
 type Coord4d = (i32, i32, i32, i32);
 type Position = Either<Coord3d, Coord4d>;
-type Input = FnvHashSet<Position>;
+type Input = FxHashSet<Position>;
 
 const INPUT_NUM: i32 = 0;
 
