@@ -1,6 +1,8 @@
 #![feature(test)]
 extern crate test;
 
+use aoc::bit_ops::BitOps;
+
 use either::{Either, Left, Right};
 use std::num::ParseIntError;
 use std::str::FromStr;
@@ -189,26 +191,6 @@ impl Iterator for FloatingMask {
         } else {
             None
         }
-    }
-}
-
-trait BitOps {
-    fn set_bit(&mut self, n: u32);
-    fn test_bit(&self, n: u32) -> bool;
-    fn clear_bit(&mut self, n: u32);
-}
-
-impl BitOps for usize {
-    fn set_bit(&mut self, n: u32) {
-        *self |= 1 << n;
-    }
-
-    fn test_bit(&self, n: u32) -> bool {
-        (*self & (1 << n)) == (1 << n)
-    }
-
-    fn clear_bit(&mut self, n: u32) {
-        *self &= !(1 << n);
     }
 }
 

@@ -23,10 +23,7 @@ fn get_input() -> Input {
         _ => panic!("Unknown input number: {:?}", INPUT_NUM),
     };
 
-    let mut inp: Input = in_str
-        .lines()
-        .map(|line| line.parse().unwrap())
-        .collect();
+    let mut inp: Input = in_str.lines().map(|line| line.parse().unwrap()).collect();
 
     inp.sort_unstable();
 

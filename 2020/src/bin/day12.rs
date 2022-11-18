@@ -177,10 +177,18 @@ enum Direction {
 }
 
 impl Direction {
-    fn is_turn(&self)    -> bool { matches!(self, Direction::Left | Direction::Right) }
-    fn is_forward(&self) -> bool { matches!(self, Direction::Forward) }
-    fn is_left(&self)    -> bool { matches!(self, Direction::Left) }
-    fn is_right(&self)   -> bool { matches!(self, Direction::Right) }
+    fn is_turn(&self) -> bool {
+        matches!(self, Direction::Left | Direction::Right)
+    }
+    fn is_forward(&self) -> bool {
+        matches!(self, Direction::Forward)
+    }
+    fn is_left(&self) -> bool {
+        matches!(self, Direction::Left)
+    }
+    fn is_right(&self) -> bool {
+        matches!(self, Direction::Right)
+    }
 
     fn rotate_left(&self) -> Self {
         match self {

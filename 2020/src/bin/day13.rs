@@ -89,7 +89,9 @@ impl FromStr for Route {
 }
 
 impl Route {
-    fn in_service(&self) -> bool { matches!(self, Route::Bus(_)) }
+    fn in_service(&self) -> bool {
+        matches!(self, Route::Bus(_))
+    }
 
     fn get_number(&self) -> usize {
         match self {

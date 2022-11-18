@@ -2,6 +2,8 @@
 #![feature(test)]
 extern crate test;
 
+use aoc::bit_ops::BitOps;
+
 use std::num::ParseIntError;
 use std::ops::RangeInclusive;
 use std::str::FromStr;
@@ -199,26 +201,6 @@ impl PartialEq for RuleBits {
 }
 
 impl Eq for RuleBits {}
-
-trait BitOps {
-    fn set_bit(&mut self, n: u32);
-    fn test_bit(&self, n: u32) -> bool;
-    fn clear_bit(&mut self, n: u32);
-}
-
-impl BitOps for usize {
-    fn set_bit(&mut self, n: u32) {
-        *self |= 1 << n;
-    }
-
-    fn test_bit(&self, n: u32) -> bool {
-        (*self & (1 << n)) == (1 << n)
-    }
-
-    fn clear_bit(&mut self, n: u32) {
-        *self &= !(1 << n);
-    }
-}
 
 #[bench]
 fn bench_part1_solution(b: &mut test::Bencher) {

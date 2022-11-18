@@ -152,7 +152,10 @@ impl Passport {
             return false;
         }
 
-        matches!(self.eye_color.as_str(), "amb" | "blu" | "brn" | "gry" | "grn" | "hzl" | "oth")
+        matches!(
+            self.eye_color.as_str(),
+            "amb" | "blu" | "brn" | "gry" | "grn" | "hzl" | "oth"
+        )
     }
 
     fn check_passport_id(&self) -> bool {

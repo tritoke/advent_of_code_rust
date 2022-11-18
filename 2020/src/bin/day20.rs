@@ -1,53 +1,47 @@
 #![feature(test)]
+#![allow(dead_code, unused_variables)]
 extern crate test;
 
-use std::num::ParseIntError;
+use aoc::bit_ops::BitOps;
+
+use anyhow::Result;
 use std::str::FromStr;
 
+use std::collections::hash_map::Entry;
 use fnv::FnvHashMap;
 
-const INPUT_NUM: i32 = 1;
+const INPUT_NUM: i32 = 0;
 
-type Tiles = Vec<Tile>;
+fn main() -> Result<()> {
+    let input = get_input()?;
 
-fn main() {
-    let input = get_input();
-
-    let (part_1, part_2) = solve(&input);
+    let (part_1, part_2) = solve(&input)?;
 
     println!("Part 1: {}", part_1);
     println!("Part 2: {}", part_2);
+
+    Ok(())
 }
 
-fn get_input() -> Tiles {
-    let mut tiles: Tiles = match INPUT_NUM {
+fn get_input() -> Result<Tiles> {
+    match INPUT_NUM {
         0 => include_str!("../inputs/day20.inp"),
         1 => include_str!("../test_inputs/day20.inp1"),
         _ => panic!("Unknown input number: {:?}", INPUT_NUM),
     }
-    .split("\n\n")
-    .map(|tile| tile.parse().unwrap())
-    .collect();
-
-    // sort by id so we can then use
-    // tiles.binary_search_by_key with tile.id
-    tiles.sort_by_key(|tile| tile.id);
-
-    tiles
+    .parse()
 }
 
-fn solve(tiles: &Tiles) -> (usize, usize) {
+fn solve(tiles: &Tiles) -> Result<(usize, usize)> {
     // map from edge to list of tile ids
     let mut edge_map: FnvHashMap<usize, Vec<usize>> = Default::default();
 
-    // build the edge map
-    for tile in tiles {
-        for side in SideIter::new() {
+    // build the edge map from each edge to the list of IDs which can produce it
+    for tile in tiles.inner.iter() {
+        for side in [Side::North, Side::East, Side::South, Side::West] {
             let edge = tile.get_edge(side);
-            edge_map
-                .entry(edge)
-                .or_default()
-                .push(tile.id);
+
+            edge_map.entry(edge).or_default().push(tile.id);
 
             edge_map
                 .entry(rev_n_bits(edge, 10))
@@ -58,12 +52,15 @@ fn solve(tiles: &Tiles) -> (usize, usize) {
 
     // build a map from tile.id to the edges that they match
     let side_map: FnvHashMap<usize, Vec<(Side, usize)>> = tiles
+        .inner
         .iter()
         .map(|tile| {
-            let matching_sides: Vec<(Side, usize)> = SideIter::new()
-                .map(|side| (side, tile.get_edge(side)))
-                .filter(|(_, edge)| edge_map[edge].len() > 1)
-                .collect();
+            let matching_sides: Vec<(Side, usize)> =
+                [Side::North, Side::East, Side::South, Side::West]
+                    .into_iter()
+                    .map(|side| (side, tile.get_edge(side)))
+                    .filter(|(_, edge)| edge_map[edge].len() > 1)
+                    .collect();
 
             (tile.id, matching_sides)
         })
@@ -77,63 +74,216 @@ fn solve(tiles: &Tiles) -> (usize, usize) {
 
     let part_1 = corner_ids.iter().product();
 
-    // build out the full image from here
-    // corners are known, build edges from corners until
-    // we know what orientation each one is in
-    // i.e. we have corner 1 -> a -> b -> c -> corner 2
-    // and have that for all corners
-    // might be worth having a wrapper struct which
-    // holds tile id and the orientation of the tile, flipped rotated etc
-    // and the neighbourning tild references
-
-    // I want to generate a sequence of indexes
-    let corner_tile = get_tile_with_id(tiles, corner_ids[0]).unwrap();
-
-    // because this tile is a corner tile we know that each direction this tile has edges in
-    // the rest of the tiles will also have edges in those directions
-    // e.g.
-    // a1 -> b1 -> c1 -> e1...
-    // |     |     |     |
-    // v     v     v     v
-    // a2 -> b2 -> c2 -> e2...
-    // |     |     |     |
-    // v     v     v     v
-    // a3 -> b3 -> c3 -> e3...
-    // |     |     |     |
-    // v     v     v     v
-    // ...   ...   ...   ...
-
-    // make the first corner the top left one, so edges going East and South
-    // this is possible for all corners and just constitutes a rotation
-    println!("{:?}", corner_tile);
-    
-    let top_left = get_tile_with_id(tiles, corner_ids[0]).unwrap();
-
-    let (s_1, edge_1) = side_map[&corner_ids[0]][0];
-    let (s_2, edge_2) = side_map[&corner_ids[0]][1];
+    // make the first corner the top left one - edges going South and East
+    let top_left = corner_ids[1];
+    let (s_1, edge_1) = side_map[&top_left][0];
+    let (s_2, edge_2) = side_map[&top_left][1];
 
     // current rotation
     let rot = match s_1.rotations_to(&s_2) {
         1 => s_1.rotations_to(&Side::East),
         3 => s_2.rotations_to(&Side::East),
-        n => panic!("Shouldn't be possible to have {} rotations for a corner", n)
+        n => unreachable!("{} rotations should not be possible for a corner.", n),
     };
 
-    // make an array of, rotation / flip state to eventually build the thing from
-    //let mut state_arr: Vec<(usize, bool, usize)> = Vec::new();
+    // map from tile id to rotation / flip
+    let mut state_map: FnvHashMap<usize, (usize, Flip)> = Default::default();
+    state_map.insert(top_left, (rot, Flip::NoFlip));
 
+    let side_length = (tiles.inner.len() as f64).sqrt() as usize;
 
-    let sides = vec![Side::North, Side::East, Side::South, Side::West];
+    // build a mapping from (row, col), to the tile id at that position
+    let mut position_map: FnvHashMap<(usize, usize), usize> = Default::default();
+    position_map.insert((0, 0), top_left);
 
+    for row in 0..side_length - 1 {
+        for col in 0..side_length {
+            let id = *position_map.get(&(row, col)).unwrap();
+            let tile = tiles.get_by_id(&id).unwrap();
+            let (rot, flip) = *state_map.get(&id).unwrap();
 
-    (part_1, 0)
-}
+            // find east edge connection
+            let east_edge = tile.get_edge(Side::East.rotate_neg(rot));
+            let east_neighbour = edge_map[&east_edge]
+                .iter()
+                .find(|tile_id| **tile_id != id)
+                .and_then(|id| tiles.get_by_id(id));
 
-fn get_tile_with_id(tiles: &Tiles, id: usize) -> Option<&Tile> {
-    match tiles.binary_search_by_key(&id, |t| t.id) {
-        Ok(idx) => tiles.get(idx),
-        Err(_) => None
+            // find south edge connection
+            let south_edge = tile.get_edge(Side::South.rotate_neg(rot));
+            let south_neighbour = edge_map[&south_edge]
+                .iter()
+                .find(|tile_id| **tile_id != id)
+                .and_then(|id| tiles.get_by_id(id));
+
+            println!("{:?}", (row, col, id, east_neighbour.map(|t|t.id), south_neighbour.map(|t|t.id)));
+
+            // if there is an east neighbour, put its info in the maps
+            if let Some(en) = east_neighbour {
+                position_map.insert((row, col + 1), en.id);
+
+                let (side, flipped) = en.find_connection_state(east_edge).unwrap();
+                let rotations = side.rotations_to(&Side::West);
+                let flip_type = if flipped ^ (rotations >= 2) { Flip::Horizontal } else { Flip::NoFlip };
+
+                if en.id == 2473 {
+                    println!("{:010b}", tile.get_edge(Side::East.rotate_neg(rot)));
+                    println!("{:010b}", en.get_edge(side));
+                    println!("{:010b}", east_edge);
+                    println!("{:010b}", rev_n_bits(east_edge, 10));
+                    dbg!(side, flip, flipped);
+                    dbg!(rotations);
+                    dbg!(flip_type);
+                }
+
+                state_map.insert(en.id, (rotations, flip_type));
+            }
+
+            // if there is a south neighbour, put its info in the maps
+            if let Some(sn) = south_neighbour {
+                position_map.insert((row + 1, col), sn.id);
+
+                let (side, flipped) = sn.find_connection_state(south_edge).unwrap();
+                let rotations = side.rotations_to(&Side::North);
+                let flip_type = if flipped ^ (rotations >= 2) { Flip::Vertical } else { Flip::NoFlip };
+
+                if sn.id == 2473 {
+                    println!("{:010b}", tile.get_edge(Side::South.rotate_neg(rot)));
+                    println!("{:010b}", sn.get_edge(side));
+                    println!("{:010b}", south_edge);
+                    println!("{:010b}", rev_n_bits(south_edge, 10));
+                    dbg!(side, flip, flipped);
+                    dbg!(rotations);
+                    dbg!(flip_type);
+                }
+                
+                state_map.insert(sn.id, (rotations, flip_type));
+            }
+        }
     }
+
+    //*state_map.get_mut(&2473).unwrap() = (2, Flip::Vertical);
+    //*state_map.get_mut(&1171).unwrap() = (3, Flip::NoFlip);
+
+    dbg!(&position_map);
+    dbg!(&state_map);
+
+    // build the final search grids
+    let mut rows: Vec<u128> = std::iter::repeat(0_u128).take(side_length * 8).collect();
+    let mut cols = rows.clone();
+    let mut monster_bits = rows.clone();
+
+    for row in 0..side_length {
+        for col in 0..side_length {
+            let id = position_map[&(row, col)];
+            let (rot, flip) = state_map[&id];
+
+            let to_change: Vec<(&mut u128, usize)> = rows.iter_mut().skip(row * 8).zip(tiles.get_by_id(&id).unwrap().iter_rows(rot)).collect();
+
+            match flip {
+                Flip::NoFlip => {
+                    for (row, cell_row) in to_change {
+                        *row <<= 8;
+                        *row |= cell_row as u128;
+                    }
+                }
+                Flip::Horizontal => {
+                    for (row, cell_row) in to_change.into_iter().rev() {
+                        *row <<= 8;
+                        *row |= cell_row as u128;
+                    }
+                }
+                Flip::Vertical => {
+                    for (row, cell_row) in to_change {
+                        *row <<= 8;
+                        *row |= rev_n_bits(cell_row, 8) as u128;
+                    }
+                }
+            }
+        }
+    }
+
+    for (i, col) in cols.iter_mut().enumerate() {
+        for bit in 0..side_length * 8 {
+            if rows[bit].test_bit(i as u32) {
+                col.set_bit(bit as u32);
+            }
+        }
+    }
+
+    // hardcode the monster variations
+    let monster          = 0b000000000000000000101000011000011000011101001001001001001000_u128;
+    let monster_rev      = 0b010000000000000000001110000110000110000100010010010010010010_u128;
+    let monster_flip     = 0b010010010010010010001000011000011000011100000000000000000010_u128;
+    let monster_flip_rev = 0b000100100100100100101110000110000110000101000000000000000000_u128;
+
+    let monsters = [
+        monster,
+        monster_rev,
+        monster_flip,
+        monster_flip_rev,
+    ];
+
+    for (j, &r) in rows.iter().enumerate() {
+        for i in (0..8 * side_length).rev() {
+            print!("{}", if r.test_bit(i as u32) { "#" } else { "." });
+            if i % 8 == 0 && i != 0 {
+                //print!("|");
+            }
+        }
+        println!("");
+        if j % 8 == 7 { //&& j < 21 {
+            //println!("--------------------------");
+        }
+    }
+
+    /*
+    println!();
+
+    for (j, &r) in cols.iter().enumerate() {
+        for i in (0..8 * side_length).rev() {
+            print!("{}", if r.test_bit(i as u32) { "#" } else { "." });
+            if i % 8 == 0 && i != 0 {
+                //print!("|");
+            }
+        }
+        println!("");
+        if j % 8 == 7 { //&& j < 21 {
+            //println!("--------------------------");
+        }
+    }
+    */
+
+    // perform the search
+    let mut count = 0;
+
+    for grid in [&rows, &cols] {
+        for w in grid.windows(3) {
+            let a = w[0];
+            let b = w[1];
+            let c = w[2];
+
+            for offset in 0..8 * side_length - 20 {
+                let pot_monster = ((a >> offset) & ((1 << 20) - 1)) << 40
+                                | ((b >> offset) & ((1 << 20) - 1)) << 20
+                                | ((c >> offset) & ((1 << 20) - 1));
+
+                if monsters.iter().find(|m| (pot_monster & **m) == **m).is_some() {
+                    count += 1;
+                    //println!("{:060b}", pot_monster);
+                    //println!("{:020b}", a & ((1 << 20) - 1));
+                    //println!("{:020b}", b & ((1 << 20) - 1));
+                    //println!("{:020b}", c & ((1 << 20) - 1));
+                }
+            }
+        }
+    }
+
+    println!("{}", count);
+    let monster_bits: u32 = count * monster.count_ones();
+    let all_bits: u32 = rows.into_iter().map(u128::count_ones).sum();
+
+    Ok((part_1, (all_bits - monster_bits) as usize))
 }
 
 // pre-compute west and east edges
@@ -147,20 +297,22 @@ struct Tile {
 }
 
 impl FromStr for Tile {
-    type Err = ParseIntError;
+    type Err = anyhow::Error;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let mut line_iter = s.lines();
 
-        let id_line = line_iter.next().unwrap();
-        let id_str = id_line.get(5..9).unwrap();
-        let id_fromstr: usize = id_str.parse()?;
+        let id: usize = line_iter
+            .next()
+            .and_then(|line| line.get(5..9))
+            .unwrap()
+            .parse()?;
 
         let mut east_edge = 0;
         let mut west_edge = 0;
 
         // lowest bit is left hand side
-        let tile_data: Vec<usize> = line_iter
+        let data: Vec<usize> = line_iter
             .enumerate()
             .map(|(line_no, line)| {
                 line.chars()
@@ -180,10 +332,10 @@ impl FromStr for Tile {
             .collect();
 
         Ok(Self {
-            id: id_fromstr,
-            data: tile_data,
-            east_edge: east_edge,
-            west_edge: west_edge
+            id,
+            data,
+            east_edge,
+            west_edge,
         })
     }
 }
@@ -193,83 +345,149 @@ impl Tile {
         match side {
             Side::North => self.data[0],
             Side::South => self.data[9],
-            Side::East  => self.east_edge,
-            Side::West  => self.west_edge,
+            Side::East => self.east_edge,
+            Side::West => self.west_edge,
         }
     }
 
-    fn iter_neighbours<'a>(&self, tiles: &'a Tiles, edge_map: &'a FnvHashMap<usize, Vec<usize>>,
-                       side_map: &'a FnvHashMap<usize, Vec<(Side, usize)>>) -> NeighbourIter<'a> {
-        NeighbourIter {
-            tiles: tiles,
-            edge_map: edge_map,
-            side_map: side_map,
-            id: self.id,
-            iter_no: 0
-        }
+    fn get_neighbour(
+        &self,
+        tiles: &Tiles,
+        side: &Side,
+        side_map: &FnvHashMap<usize, Vec<(Side, usize)>>,
+    ) -> Option<usize> {
+        side_map[&self.id]
+            .iter()
+            .find(|(s, _)| s == side)
+            .and_then(|(_, id)| tiles.inner.binary_search_by_key(id, |t| t.id).ok())
     }
 
-    fn get_neighbour(&self, tiles: &Tiles, side: &Side, edge_map: &FnvHashMap<usize, Vec<usize>>,
-                     side_map: &FnvHashMap<usize, Vec<(Side, usize)>>) -> Option<usize> {
-        if let Some((_, id)) = side_map[&self.id].iter().find(|(s,_)| s == side) {
-            if let Ok(idx) = tiles.binary_search_by_key(id, |t| t.id) {
-                Some(idx)
-            } else {
-                None
+    fn find_connection_state(&self, needle: usize) -> Option<(Side, bool)> {
+        let flipped_needle = rev_n_bits(needle, 10);
+
+        let mut options = vec![];
+        for side in [Side::North, Side::East, Side::South, Side::West] {
+            let edge = self.get_edge(side);
+
+            if needle == 0b0101011100 {
+                dbg!(side);
+                println!("edge = {:010b}", edge);
+                println!("needle = {:010b}", needle);
+                println!("flipped_needle = {:010b}", flipped_needle);
+                print!("\n");
             }
-        } else {
-            None
+
+            if edge == needle || edge == flipped_needle {
+                options.push(
+                    Some((side, edge == flipped_needle))
+                )
+                //return Some((side, edge == flipped_needle));
+            }
+        }
+
+        if needle == 0b0101011100 {
+            dbg!(&options);
+        }
+        options.first().cloned().flatten()
+        //None
+    }
+
+    fn iter_rows(&self, rot: usize) -> Box<dyn Iterator<Item = usize> + '_> {
+        // individual arms have to be boxed as their types aren't the same
+        match rot % 4 {
+            0 => Box::new(
+                self.data
+                    .iter()
+                    .skip(1)
+                    .take(8)
+                    .map(|row| row >> 1 & 0b1111_1111),
+            ),
+
+            2 => Box::new(
+                self.data
+                    .iter()
+                    .skip(1)
+                    .take(8)
+                    .rev()
+                    .map(|row| rev_n_bits(row >> 1, 8)),
+            ),
+
+            1 => Box::new((1..=8).map(|bit| {
+                self.data
+                    .iter()
+                    .skip(1)
+                    .take(8)
+                    .enumerate()
+                    .fold(0, |mut acc, (i, x)| {
+                        if x.test_bit(bit) {
+                            acc.set_bit(i as u32);
+                        }
+                        acc
+                    })
+            })),
+
+            3 => Box::new((1..=8).rev().map(|bit| {
+                self.data
+                    .iter()
+                    .skip(1)
+                    .take(8)
+                    .enumerate()
+                    .fold(0, |mut acc, (i, x)| {
+                        if x.test_bit(bit) {
+                            acc.set_bit((7 - i) as u32);
+                        }
+                        acc
+                    })
+            })),
+
+            _ => unreachable!(),
         }
     }
 }
 
 #[derive(Debug)]
-struct NeighbourIter<'a> {
-    tiles: &'a Tiles,
-    edge_map: &'a FnvHashMap<usize, Vec<usize>>,
-    side_map: &'a FnvHashMap<usize, Vec<(Side, usize)>>,
-    id: usize,
-    iter_no: usize
+struct Tiles {
+    inner: Vec<Tile>,
 }
 
-impl Iterator for NeighbourIter<'_> {
-    type Item = (Side, usize);
-
-    fn next(&mut self) -> Option<Self::Item> {
-        self.iter_no += 1;
-
-        if let Some((side, edge)) = self.side_map[&self.id].get(self.iter_no - 1) {
-            if let Some(id) = self.edge_map[&edge].iter().filter(|id| **id != self.id).next() {
-                if let Ok(idx) = self.tiles.binary_search_by_key(id, |t| t.id) {
-                    Some((*side, idx))
-                } else {
-                    None
-                }
-            } else {
-                eprintln!("Couldn't find tile with edge {}.", edge);
-                None
-            }
-        } else {
-            None
-        }
+impl Tiles {
+    fn get_by_id(&self, id: &usize) -> Option<&Tile> {
+        self.inner
+            .binary_search_by_key(id, |t| t.id)
+            .ok()
+            .and_then(|idx| self.inner.get(idx))
     }
 }
 
-#[derive(Debug,Copy,Clone,Eq,PartialEq)]
+impl FromStr for Tiles {
+    type Err = anyhow::Error;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let mut tiles: Vec<Tile> = s.split("\n\n").map(str::parse).collect::<Result<_>>()?;
+
+        // sort by id so we can then use
+        // tiles.binary_search_by_key with tile.id
+        tiles.sort_by_key(|tile| tile.id);
+
+        Ok(Self { inner: tiles })
+    }
+}
+
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
 enum Side {
     North,
     East,
     South,
-    West
+    West,
 }
 
 impl Side {
     fn get_sideno(&self) -> usize {
         match self {
             Side::North => 0,
-            Side::East  => 1,
+            Side::East => 1,
             Side::South => 2,
-            Side::West  => 3,
+            Side::West => 3,
         }
     }
 
@@ -279,7 +497,7 @@ impl Side {
             1 => Side::East,
             2 => Side::South,
             3 => Side::West,
-            _ => panic!("Cannot create Side from sideno: {}.", sideno)
+            _ => panic!("Cannot create Side from sideno: {}.", sideno),
         }
     }
 
@@ -287,91 +505,44 @@ impl Side {
         let s1 = self.get_sideno();
         let s2 = other.get_sideno();
 
-        return s2 - s1;
+        (s2 - s1) % 4
     }
 
-    fn rotate_by(&self, rotations: usize) -> Self {
+    fn rotate_pos(&self, rotations: usize) -> Self {
         let sideno = self.get_sideno();
 
         let new_sideno = (sideno + rotations) % 4;
-        
+
+        Side::from_sideno(new_sideno)
+    }
+
+    fn rotate_neg(&self, rotations: usize) -> Self {
+        let sideno = self.get_sideno();
+
+        let new_sideno = (sideno - rotations) % 4;
+
         Side::from_sideno(new_sideno)
     }
 }
 
-struct SideIter {
-    iter_no: usize
-}
-
-impl Iterator for SideIter {
-    type Item = Side;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        self.iter_no += 1;
-
-        match self.iter_no {
-            1 => Some(Side::North),
-            2 => Some(Side::East),
-            3 => Some(Side::South),
-            4 => Some(Side::West),
-            _ => None
-        }
-    }
-}
-
-impl SideIter {
-    fn new() -> Self {
-        Self {
-            iter_no: 0
-        }
-    }
-}
-
-trait BitOps {
-    fn set_bit(&mut self, n: u32);
-    fn test_bit(&self, n: u32) -> bool;
-    fn clear_bit(&mut self, n: u32);
-}
-
-impl BitOps for usize {
-    fn set_bit(&mut self, n: u32) {
-        *self |= 1 << n;
-    }
-
-    fn test_bit(&self, n: u32) -> bool {
-        (*self & (1 << n)) == (1 << n)
-    }
-
-    fn clear_bit(&mut self, n: u32) {
-        *self &= !(1 << n);
-    }
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
+enum Flip {
+    NoFlip,
+    Vertical,
+    Horizontal,
 }
 
 /// returns the reverse of the first `bits` in `n`
 fn rev_n_bits(n: usize, bits: u32) -> usize {
-    (0..bits)
-        .filter(|b| n.test_bit(*b))
-        .fold(0, |mut acc, b| {
-            acc.set_bit(bits - 1 - b);
-            acc
-        })
-}
-
-#[allow(dead_code)]
-fn print_tile(tile: &Tile) {
-    println!("Tile {}:", tile.id);
-    for row in tile.data.iter() {
-        let row_string = (0..10)
-            .map(|i| if row.test_bit(i) { '#' } else { '.' })
-            .collect::<String>();
-
-        println!("{}", row_string);
-    }
+    (0..bits).filter(|b| n.test_bit(*b)).fold(0, |mut acc, b| {
+        acc.set_bit(bits - 1 - b);
+        acc
+    })
 }
 
 #[bench]
 fn bench_solution(b: &mut test::Bencher) {
-    let input = get_input();
+    let input = get_input().unwrap();
 
     b.iter(|| solve(&input))
 }

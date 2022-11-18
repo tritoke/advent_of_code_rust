@@ -78,7 +78,7 @@ fn part2(input: &PartInput) -> i64 {
 
 #[derive(Debug)]
 struct Program<'a> {
-    instrs: &'a[Instruction],
+    instrs: &'a [Instruction],
     ip: i64,
     acc: i64,
 }
@@ -115,8 +115,12 @@ enum Instruction {
 }
 
 impl Instruction {
-    fn is_acc(&self) -> bool { matches!(self, Instruction::Acc(_)) }
-    fn is_jump_loop(&self) -> bool { matches!(self, Instruction::Jmp(0)) }
+    fn is_acc(&self) -> bool {
+        matches!(self, Instruction::Acc(_))
+    }
+    fn is_jump_loop(&self) -> bool {
+        matches!(self, Instruction::Jmp(0))
+    }
 }
 
 impl FromStr for Instruction {

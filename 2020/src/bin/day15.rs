@@ -89,9 +89,7 @@ impl Iterator for Game<'_> {
         }
 
         // update map entry
-        let last = self.last_turns
-                       .entry(next_no)
-                       .or_insert(self.iter_no);
+        let last = self.last_turns.entry(next_no).or_insert(self.iter_no);
 
         self.last_is_new = *last == self.iter_no;
 

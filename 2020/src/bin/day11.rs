@@ -24,10 +24,11 @@ fn get_input() -> Input {
     };
 
     Grid::from_vec(
-        in_str.lines()
-              .flat_map(|line| line.chars().map(Cell::from_char))
-              .collect(),
-        in_str.find('\n').unwrap()
+        in_str
+            .lines()
+            .flat_map(|line| line.chars().map(Cell::from_char))
+            .collect(),
+        in_str.find('\n').unwrap(),
     )
 }
 
@@ -82,24 +83,26 @@ fn evolve_board(before_state: &Input, after_state: &mut Input, ruleset: usize) -
         _ => panic!("Unknown ruleset: {}", ruleset),
     };
 
-    let non_floor_iter = before_state.iter()
-                                     .enumerate()
-                                     .zip(after_state.iter_mut())
-                                     .filter(|((_, cell), _)| !cell.is_floor());
+    let non_floor_iter = before_state
+        .iter()
+        .enumerate()
+        .zip(after_state.iter_mut())
+        .filter(|((_, cell), _)| !cell.is_floor());
 
-    'cell_loop:
-    for ((cell_no, cell), after_cell) in non_floor_iter {
+    'cell_loop: for ((cell_no, cell), after_cell) in non_floor_iter {
         let cols = before_state.cols();
         let (cell_x, cell_y) = div_rem(cell_no, cols);
 
         let mut num_occupied = 0;
         for i in 0..9 {
             // i == 4 maps to an x and y offset of 0
-            if i == 4 { continue };
+            if i == 4 {
+                continue;
+            };
 
             let (x_off, y_off) = {
                 let (i, j) = div_rem(i, 3);
-                
+
                 (i as isize - 1, j as isize - 1)
             };
 
@@ -110,7 +113,7 @@ fn evolve_board(before_state: &Input, after_state: &mut Input, ruleset: usize) -
                     if let Some(Cell::Occupied) = before_state.get(x as usize, y as usize) {
                         num_occupied += 1;
                     }
-                },
+                }
                 2 => {
                     let (mut x, mut y) = (cell_x as isize + x_off, cell_y as isize + y_off);
                     loop {
@@ -118,7 +121,7 @@ fn evolve_board(before_state: &Input, after_state: &mut Input, ruleset: usize) -
                             Some(Cell::Occupied) => {
                                 num_occupied += 1;
                                 break;
-                            },
+                            }
                             Some(Cell::Floor) => (/* do nothing */),
                             Some(Cell::Empty) | None => break,
                         }
@@ -127,7 +130,7 @@ fn evolve_board(before_state: &Input, after_state: &mut Input, ruleset: usize) -
                         y += y_off;
                     }
                 }
-                _ => panic!("Unrecognised ruleset: {}", ruleset)
+                _ => panic!("Unrecognised ruleset: {}", ruleset),
             }
 
             // early exit if four or more seats are occupied
@@ -153,9 +156,7 @@ fn evolve_board(before_state: &Input, after_state: &mut Input, ruleset: usize) -
 }
 
 fn count_occupied(board: &Input) -> usize {
-    board.iter()
-         .filter(|cell| cell.is_occupied())
-         .count()
+    board.iter().filter(|cell| cell.is_occupied()).count()
 }
 
 #[derive(Debug, Clone)]
@@ -183,9 +184,15 @@ impl Cell {
         }
     }
 
-    fn is_floor(&self)    -> bool { matches!(self, Cell::Floor)    } 
-    fn is_empty(&self)    -> bool { matches!(self, Cell::Empty)    }
-    fn is_occupied(&self) -> bool { matches!(self, Cell::Occupied) }
+    fn is_floor(&self) -> bool {
+        matches!(self, Cell::Floor)
+    }
+    fn is_empty(&self) -> bool {
+        matches!(self, Cell::Empty)
+    }
+    fn is_occupied(&self) -> bool {
+        matches!(self, Cell::Occupied)
+    }
 }
 
 fn div_rem(lhs: usize, rhs: usize) -> (usize, usize) {
@@ -200,7 +207,10 @@ fn print_board(input: &Input) {
     for row in 0..input.rows() {
         println!(
             "{}",
-            input.iter_row(row).map(|cell| cell.to_char()).collect::<String>()
+            input
+                .iter_row(row)
+                .map(|cell| cell.to_char())
+                .collect::<String>()
         );
     }
 }

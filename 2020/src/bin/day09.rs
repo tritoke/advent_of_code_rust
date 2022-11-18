@@ -46,7 +46,7 @@ fn part1(input: &PartInput) -> usize {
         let to_remove = window[0];
 
         let mut small_end_iter = prev_window.iter();
-        let mut big_end_iter = prev_window.iter():rev();
+        let mut big_end_iter = prev_window.iter().rev();
 
         let mut small_end = small_end_iter.next().unwrap();
         let mut big_end = big_end_iter.next().unwrap();
@@ -98,8 +98,12 @@ fn part2(input: &PartInput, part_1_ans: usize) -> usize {
     let mut max = input[end];
 
     for &elem in input.iter().take(end).skip(start) {
-        if elem > max { max = elem };
-        if elem < min { min = elem };
+        if elem > max {
+            max = elem
+        };
+        if elem < min {
+            min = elem
+        };
     }
 
     max + min

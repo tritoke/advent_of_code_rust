@@ -181,10 +181,7 @@ fn print_grid(grid: &Input) {
 }
 
 fn iter_neighbours(pos: Position) -> Neighbours {
-    Neighbours {
-        pos,
-        iter_no: 0,
-    }
+    Neighbours { pos, iter_no: 0 }
 }
 
 struct Neighbours {
@@ -212,9 +209,9 @@ impl Iterator for Neighbours {
                 self.iter_no += 1;
             }
 
-            let x_diff = self.iter_no      % 3 - 1;
-            let y_diff = self.iter_no / 3  % 3 - 1;
-            let z_diff = self.iter_no / 9  % 3 - 1;
+            let x_diff = self.iter_no % 3 - 1;
+            let y_diff = self.iter_no / 3 % 3 - 1;
+            let z_diff = self.iter_no / 9 % 3 - 1;
             let w_diff = self.iter_no / 27 % 3 - 1;
 
             self.iter_no += 1;
