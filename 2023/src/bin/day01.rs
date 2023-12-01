@@ -9,9 +9,7 @@ fn main() {
 }
 
 fn parse_input() -> Vec<&'static str> {
-    include_str!("../../inputs/day01.txt")
-        .lines()
-        .collect()
+    include_str!("../../inputs/day01.txt").lines().collect()
 }
 
 fn part1(inp: &[&str]) -> u32 {
@@ -45,22 +43,19 @@ fn part2(inp: &[&str]) -> u32 {
 }
 
 fn get_number_prefix(num: &[u8]) -> Option<u32> {
-    NUMBERS.get(&num[..3.min(num.len())])
-        .or(NUMBERS.get(&num[..4.min(num.len())]))
-        .or(NUMBERS.get(&num[..5.min(num.len())]))
-        .copied()
+    #[rustfmt::skip]
+    const TABLE: [(&[u8], u32); 9] = [
+        (b"one",   1),
+        (b"two",   2),
+        (b"three", 3),
+        (b"four",  4),
+        (b"five",  5),
+        (b"six",   6),
+        (b"seven", 7),
+        (b"eight", 8),
+        (b"nine",  9),
+    ];
+    TABLE
+        .into_iter()
+        .find_map(|(prefix, n)| num.starts_with(prefix).then_some(n))
 }
-
-#[rustfmt::skip]
-static NUMBERS: phf::Map<&'static [u8], u32> = phf::phf_map! {
-    b"one"   => 1,
-    b"two"   => 2,
-    b"three" => 3,
-    b"four"  => 4,
-    b"five"  => 5,
-    b"six"   => 6,
-    b"seven" => 7,
-    b"eight" => 8,
-    b"nine"  => 9,
-};
-
