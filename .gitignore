@@ -13,4 +13,5 @@ Cargo.lock
 # what...
 *.zip
 
-inputs/
+inputs/*
+!inputs/.gitkeep
