@@ -134,21 +134,14 @@ fn part2(inp: &Grid, path: Vec<GridRef>) -> u32 {
     let mut count = 0;
     for (row, row_tiles) in inp.tiles.iter().enumerate() {
         let mut in_region = false;
-        let mut last_corner = None;
         for (col, mut tile) in row_tiles.iter().copied().enumerate() {
             if tile == b'S' {
                 tile = inp.categorise_start((row, col));
             }
+
             if path_set.contains(&(row, col)) {
-                match (last_corner, tile) {
-                    (_, b'|') => in_region = !in_region,
-                    (Some(b'L'), b'J') | (Some(b'F'), b'7') => last_corner = None,
-                    (Some(b'F'), b'J') | (Some(b'L'), b'7') => {
-                        in_region = !in_region;
-                        last_corner = None;
-                    }
-                    (_, b'F' | b'L' | b'7' | b'J') => last_corner = Some(tile),
-                    _ => (),
+                if matches!(tile, b'|' | b'F' | b'7') {
+                    in_region = !in_region;
                 }
             } else if in_region {
                 count += 1;
