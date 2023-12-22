@@ -9,3 +9,4 @@ edition = "2021"
 anyhow = "1.0.75"
 itertools = "0.12.0"
 phf = { version = "0.11.2", features = ["macros"] }
+rustc-hash = "1.1.0"
