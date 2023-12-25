@@ -142,7 +142,11 @@ fn minimum_heat_loss(grid: &[Vec<u8>], min_move_len: usize, max_move_len: usize)
             return loss;
         }
 
-        to_explore.extend(graph.neighbours(node, min_move_len, max_move_len))
+        to_explore.extend(
+            graph
+                .neighbours(node, min_move_len, max_move_len)
+                .filter(|node| !seen.contains(&(node.pos, node.cannot_move_in))),
+        )
     }
 
     unreachable!("Failed to find a path");
