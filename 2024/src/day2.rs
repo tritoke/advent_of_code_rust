@@ -60,21 +60,23 @@ impl FromStr for Input {
     }
 }
 
+fn row_is_safe(row: &[u8]) -> bool {
+    let monotonic = row.is_sorted_by(|a, b| a < b) || row.is_sorted_by(|a, b| a > b);
+    if !monotonic {
+        return false;
+    }
+
+    row.windows(2).all(|pair| {
+        let diff = pair[0].abs_diff(pair[1]);
+        (1..=3).contains(&diff)
+    })
+}
+
 pub fn part1(input: &Input) -> u32 {
     let mut count = 0;
 
     for row in input.rows() {
-        let monotonic = row.is_sorted_by(|a, b| a < b) || row.is_sorted_by(|a, b| a > b);
-        if !monotonic {
-            continue;
-        }
-
-        let limited_diff = row.windows(2).all(|pair| {
-            let diff = pair[0].abs_diff(pair[1]);
-            (1..=3).contains(&diff)
-        });
-
-        if limited_diff {
+        if row_is_safe(row) {
             count += 1;
         }
     }
@@ -82,69 +84,43 @@ pub fn part1(input: &Input) -> u32 {
     count
 }
 
+fn row_is_safe_skipping(row: &[u8], skip: usize) -> bool {
+    let base_iter = row
+        .iter()
+        .enumerate()
+        .filter_map(|(i, value)| (i != skip).then_some(value));
+    let first_skipped = base_iter.clone().skip(1);
+    let mut ascending = 0;
+    let mut descending = 0;
+    for (a, b) in base_iter.zip(first_skipped) {
+        if !(1..=3).contains(&a.abs_diff(*b)) {
+            return false;
+        }
+
+        if a > b {
+            descending += 1;
+        } else {
+            ascending += 1;
+        }
+    }
+
+    ascending == 0 || descending == 0
+}
+
 pub fn part2(input: &Input) -> u32 {
     let mut count = 0;
 
     'outer: for row in input.rows() {
-        let mut element_removed = None;
-        let mut ascending = 0;
-        let mut descending = 0;
-        for (i, triplet) in row.windows(3).enumerate() {
-            let &[a, b, c] = triplet else { unreachable!() };
-
-            let bc_diff_valid = (1..=3).contains(&b.abs_diff(c));
-            if let Some(removed) = element_removed {
-                if i == removed + 1 {
-                    if bc_diff_valid {
-                        if b < c {
-                            ascending += 1;
-                        } else {
-                            descending += 1;
-                        }
-
-                        continue;
-                    } else {
-                        continue 'outer;
-                    }
-                }
-            }
-
-            // happy path, this triplet meets the conditions without removal
-            let ab_diff_valid = (1..=3).contains(&a.abs_diff(b));
-            if ab_diff_valid && bc_diff_valid {
-                if a < b && b < c {
-                    // all are ascending and the differences are okay
-                    ascending += 1;
-                    continue;
-                } else if a > b && b > c {
-                    // all are descending and the differences are okay
-                    descending += 1;
-                    continue;
-                }
-            }
-
-            // we need to remove b
-            if element_removed.is_some() {
-                continue 'outer;
-            } else {
-                element_removed = Some(i);
-            }
-
-            let ac_diff_valid = (1..=3).contains(&a.abs_diff(c));
-            if ac_diff_valid {
-                if a < c {
-                    ascending += 1;
-                } else {
-                    descending += 1;
-                }
-            } else {
-                // no configuration was valid
-                continue 'outer;
-            }
+        if row_is_safe(row) {
+            count += 1;
+            continue;
         }
 
-        if descending <= 1 || ascending <= 1 {
-            count += 1;
+        for i in 0..row.len() {
+            if row_is_safe_skipping(row, i) {
+                count += 1;
+                continue 'outer;
+            }
         }
     }
 
@@ -196,6 +172,17 @@ mod tests {
         for (a, b) in parsed.rows().zip(correct) {
             assert_eq!(a, b);
         }
+    }
+
+    #[test]
+    fn input_recover_rows_wonky() {
+        let parsed = Input::from_str("1 2 3\n1 2\n1 2 3 4\n").unwrap();
+
+        let mut rows = parsed.rows();
+        assert_eq!(rows.next(), Some(&[1u8, 2, 3] as &[_]));
+        assert_eq!(rows.next(), Some(&[1u8, 2] as &[_]));
+        assert_eq!(rows.next(), Some(&[1u8, 2, 3, 4] as &[_]));
+        assert_eq!(rows.next(), None);
     }
 
     #[test]

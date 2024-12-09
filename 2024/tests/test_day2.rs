@@ -13,5 +13,5 @@ fn test_day2_part1() {
 #[test]
 fn test_day2_part2() {
     let input = Input::from_str(include_str!("../inputs/day2.input")).unwrap();
-    assert_eq!(part2(&input), 28786472);
+    assert_eq!(part2(&input), 700);
 }
