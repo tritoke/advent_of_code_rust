@@ -1,4 +1,4 @@
-use advent_of_code_2024::day1::*;
+use advent_of_code_2024::day01::*;
 use std::str::FromStr;
 
 #[test]
