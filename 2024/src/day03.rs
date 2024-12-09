@@ -30,14 +30,10 @@ pub fn part2(input: &Input) -> u32 {
     let mut sum = 0;
 
     for seg in input.split("do()") {
-        dbg!(seg);
-
         let enabled = match seg.split_once("don't()") {
             Some((left, _)) => left,
             None => seg,
         };
-
-        dbg!(enabled);
 
         sum += part1(enabled);
     }

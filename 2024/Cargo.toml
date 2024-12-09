@@ -5,14 +5,11 @@ edition = "2021"
 
 [dependencies]
 color-eyre = { version = "0.6.3", default-features = false }
+concat-idents = "1.1.5"
 
 [dev-dependencies]
 criterion = "0.5.1"
 
 [[bench]]
-name = "day1"
-harness = false
-
-[[bench]]
-name = "day2"
+name = "all_days"
 harness = false
