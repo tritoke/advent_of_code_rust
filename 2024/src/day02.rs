@@ -1,6 +1,6 @@
-use std::{collections::BTreeMap, str::FromStr};
+use std::str::FromStr;
 
-use color_eyre::eyre::{bail, Report, Result};
+use color_eyre::eyre::{Report, Result};
 
 pub struct Input {
     pub(crate) numbers: Vec<u8>,
